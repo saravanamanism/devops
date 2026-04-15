@@ -2,12 +2,36 @@ trigger:
 - main
 
 pool:
-  name: Default
+  vmImage: 'ubuntu-latest'
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+stages:
 
-- script: |
-    echo Pipeline running on self-hosted agent
-  displayName: 'Run multi-line script'
+# ---------------- BUILD STAGE ----------------
+- stage: Build
+  displayName: 'Build Stage'
+  jobs:
+  - job: BuildJob
+    displayName: 'Build Job'
+    steps:
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'clean install'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.11'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+
+# ---------------- TEST STAGE ----------------
+- stage: Test
+  displayName: 'Test Stage'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: TestJob
+    displayName: 'Test Job'
+    steps:
+    - script: |
+        echo "Running regression tests..."
+        mvn test
+      displayName: 'Run Tests'
